@@ -85,25 +85,21 @@
             Open in New Tab
           </a>
           <a id="download-pdf" class="control-button" href="#" download>
-            Download for Adobe Reader
+            Download PDF
           </a>
         </div>
 
         <section id="main-content" class="viewer-main" tabindex="-1">
           <div id="loading-state" class="status status-loading">Loading document…</div>
           <div id="error-state" class="status status-error" hidden>
-            Unable to load this PDF. Please try "Open in New Tab" or "Download for Adobe Reader".
+            Unable to load this PDF. Please set your Adobe PDF Embed API client ID in app.js or use "Open in New Tab".
           </div>
-          <iframe
-            id="pdf-frame"
-            class="pdf-frame"
-            title="PDF document viewer"
-            loading="eager"
-          ></iframe>
+          <div id="adobe-viewer" class="pdf-frame" aria-label="PDF document viewer"></div>
         </section>
       </section>
     </main>
 
+    <script src="https://acrobatservices.adobe.com/view-sdk/viewer.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>
