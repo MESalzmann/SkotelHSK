@@ -28,21 +28,34 @@ const adobeViewerEl = document.getElementById("adobe-viewer");
 const openExternal = document.getElementById("open-external");
 const downloadPdf = document.getElementById("download-pdf");
 
+function bindEvent(element, eventName, callback) {
+  if (!element) {
+    console.warn(`Skipped binding ${eventName}: target element is missing.`);
+    return;
+  }
+
+  element.addEventListener(eventName, callback);
+}
+
 function setView(showViewer) {
+  if (!homeView || !viewerView) return;
+
   homeView.classList.toggle("is-active", !showViewer);
   viewerView.classList.toggle("is-active", showViewer);
   viewerView.setAttribute("aria-hidden", String(!showViewer));
 }
 
 function setViewerLinks(url, title) {
+  if (!openExternal || !downloadPdf) return;
+
   openExternal.href = url;
   downloadPdf.href = url;
   downloadPdf.setAttribute("download", `${title}.pdf`);
 }
 
 function showError() {
-  loadingState.hidden = true;
-  errorState.hidden = false;
+  if (loadingState) loadingState.hidden = true;
+  if (errorState) errorState.hidden = false;
 }
 
 function isAdobeConfigured() {
@@ -53,6 +66,12 @@ function isAdobeConfigured() {
 }
 
 async function renderWithAdobeEmbed(doc) {
+  if (!adobeViewerEl) {
+    console.error("Viewer container not found.");
+    showError();
+    return;
+  }
+
   if (!window.AdobeDC || !state.sdkReady || !isAdobeConfigured()) {
     showError();
     return;
@@ -79,8 +98,8 @@ async function renderWithAdobeEmbed(doc) {
       }
     );
 
-    loadingState.hidden = true;
-    errorState.hidden = true;
+    if (loadingState) loadingState.hidden = true;
+    if (errorState) errorState.hidden = true;
   } catch (error) {
     console.error("Adobe PDF Embed API failed", error);
     showError();
@@ -92,10 +111,10 @@ function loadDocument(docId) {
   if (!doc) return;
 
   state.activeDocId = docId;
-  titleEl.textContent = doc.title;
-  docSwitcher.value = docId;
-  loadingState.hidden = false;
-  errorState.hidden = true;
+  if (titleEl) titleEl.textContent = doc.title;
+  if (docSwitcher) docSwitcher.value = docId;
+  if (loadingState) loadingState.hidden = false;
+  if (errorState) errorState.hidden = true;
 
   setViewerLinks(doc.url, doc.title);
   renderWithAdobeEmbed(doc);
@@ -103,21 +122,21 @@ function loadDocument(docId) {
 
 function switchToViewer(docId) {
   setView(true);
-  viewerMain.focus();
+  if (viewerMain) viewerMain.focus();
   loadDocument(docId);
 }
 
 document.querySelectorAll(".open-doc").forEach((button) => {
-  button.addEventListener("click", () => {
+  bindEvent(button, "click", () => {
     switchToViewer(button.dataset.docId);
   });
 });
 
-backBtn.addEventListener("click", () => {
+bindEvent(backBtn, "click", () => {
   setView(false);
 });
 
-docSwitcher.addEventListener("change", (event) => {
+bindEvent(docSwitcher, "change", (event) => {
   loadDocument(event.target.value);
 });
 
