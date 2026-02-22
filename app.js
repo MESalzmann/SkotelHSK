@@ -23,6 +23,7 @@ const state = {
   zoomScale: 1,
   scrollByDoc: {},
   renderingToken: 0,
+  lastKnownViewerWidth: 0,
 };
 
 const homeView = document.getElementById("home-view");
@@ -64,6 +65,7 @@ function updateZoomLabel() {
 async function renderPdfPages(pdfDoc, token) {
   pagesEl.innerHTML = "";
   const containerWidth = getAvailableWidth();
+  state.lastKnownViewerWidth = containerWidth;
 
   for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum += 1) {
     if (token !== state.renderingToken) return;
@@ -103,6 +105,19 @@ async function renderPdfPages(pdfDoc, token) {
     pageWrap.appendChild(canvas);
     pagesEl.appendChild(pageWrap);
   }
+}
+
+async function rerenderActivePdf(preserveScroll = true) {
+  if (!state.activePdf) return;
+
+  const savedScroll = preserveScroll ? viewerMain.scrollTop : 0;
+  state.renderingToken += 1;
+  const token = state.renderingToken;
+
+  await renderPdfPages(state.activePdf, token);
+
+  if (token !== state.renderingToken) return;
+  viewerMain.scrollTop = savedScroll;
 }
 
 async function loadDocument(docId, preserveScroll = false) {
@@ -157,15 +172,19 @@ function setManualZoom(nextScale) {
   state.zoomMode = "manual";
   state.zoomScale = Math.min(Math.max(nextScale, 0.5), 3);
   updateZoomLabel();
-  loadDocument(state.activeDocId, true);
+  rerenderActivePdf(true);
 }
 
 const rerenderOnResize = debounce(() => {
   if (!state.activePdf || !viewerView.classList.contains("is-active")) return;
+  if (state.zoomMode !== "fit-width") return;
 
-  if (state.zoomMode === "fit-width") {
-    loadDocument(state.activeDocId, true);
-  }
+  const currentWidth = getAvailableWidth();
+  const widthDelta = Math.abs(currentWidth - state.lastKnownViewerWidth);
+
+  if (widthDelta < 4) return;
+
+  rerenderActivePdf(true);
 }, 220);
 
 document.querySelectorAll(".open-doc").forEach((button) => {
@@ -189,7 +208,7 @@ zoomInBtn.addEventListener("click", () => setManualZoom(state.zoomScale + 0.1));
 zoomOutBtn.addEventListener("click", () => setManualZoom(state.zoomScale - 0.1));
 fitWidthBtn.addEventListener("click", () => {
   state.zoomMode = "fit-width";
-  loadDocument(state.activeDocId, true);
+  rerenderActivePdf(true);
 });
 
 window.addEventListener("resize", rerenderOnResize);
