@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hotel School Documents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <main id="app" class="app-shell" aria-live="polite">
+      <section id="home-view" class="view is-active" aria-labelledby="home-title">
+        <header class="home-header">
+          <img
+            src="./HS logo with name.png"
+            alt="Hotel School logo"
+            class="home-logo"
+          />
+          <h1 id="home-title" class="home-title">Choose your document</h1>
+          <p class="home-subtitle">
+            Access information quickly with a mobile-optimized reading experience.
+          </p>
+        </header>
+
+        <section class="cards" aria-label="Available documents">
+          <article class="doc-card" data-doc-id="menu">
+            <h2 class="doc-title">Menu</h2>
+            <p class="doc-description">
+              View the latest culinary offerings and curated selections.
+            </p>
+            <button class="cta-button open-doc" data-doc-id="menu" aria-label="Open menu PDF">
+              Open
+            </button>
+          </article>
+
+          <article class="doc-card" data-doc-id="brochure">
+            <h2 class="doc-title">Brochure</h2>
+            <p class="doc-description">
+              Explore programs, campus life, and hospitality experiences.
+            </p>
+            <button
+              class="cta-button open-doc"
+              data-doc-id="brochure"
+              aria-label="Open brochure PDF"
+            >
+              Open
+            </button>
+          </article>
+        </section>
+      </section>
+
+      <section
+        id="viewer-view"
+        class="view"
+        aria-labelledby="viewer-title"
+        aria-hidden="true"
+      >
+        <header class="viewer-header">
+          <button
+            id="back-home"
+            class="icon-button"
+            type="button"
+            aria-label="Back to document selection"
+          >
+            ←
+          </button>
+          <img src="./HS logo.png" alt="Hotel School symbol" class="viewer-logo" />
+          <h2 id="viewer-title" class="viewer-title">Document</h2>
+          <label class="sr-only" for="doc-switcher">Switch document</label>
+          <select id="doc-switcher" class="doc-switcher" aria-label="Select a document">
+            <option value="menu">Menu</option>
+            <option value="brochure">Brochure</option>
+          </select>
+        </header>
+
+        <div class="viewer-controls" role="toolbar" aria-label="PDF zoom controls">
+          <button id="zoom-out" class="control-button" type="button" aria-label="Zoom out">
+            Zoom Out
+          </button>
+          <button id="zoom-in" class="control-button" type="button" aria-label="Zoom in">
+            Zoom In
+          </button>
+          <button
+            id="fit-width"
+            class="control-button"
+            type="button"
+            aria-label="Fit PDF to screen width"
+          >
+            Fit Width
+          </button>
+          <output id="zoom-indicator" class="zoom-indicator" aria-live="polite">100%</output>
+        </div>
+
+        <section id="main-content" class="viewer-main" tabindex="-1">
+          <div id="loading-state" class="status status-loading">Loading document…</div>
+          <div id="error-state" class="status status-error" hidden>
+            Unable to load this PDF. Please check the file path or network access.
+          </div>
+          <div id="pdf-pages" class="pdf-pages" aria-label="PDF pages"></div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
