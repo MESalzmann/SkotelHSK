@@ -92,14 +92,17 @@
         <section id="main-content" class="viewer-main" tabindex="-1">
           <div id="loading-state" class="status status-loading">Loading document…</div>
           <div id="error-state" class="status status-error" hidden>
-            Unable to load this PDF. Please set your Adobe PDF Embed API client ID in app.js or use "Open in New Tab".
+            Unable to load this PDF here. Please try "Open in New Tab".
           </div>
-          <div id="adobe-viewer" class="pdf-frame" aria-label="PDF document viewer"></div>
+          <iframe
+            id="pdf-frame"
+            class="pdf-frame"
+            title="PDF document viewer"
+            src=""
+          ></iframe>
         </section>
       </section>
     </main>
-
-    <script src="https://acrobatservices.adobe.com/view-sdk/viewer.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>
