@@ -80,30 +80,26 @@
           </select>
         </header>
 
-        <div class="viewer-controls" role="toolbar" aria-label="PDF zoom controls">
-          <button id="zoom-out" class="control-button" type="button" aria-label="Zoom out">
-            Zoom Out
-          </button>
-          <button id="zoom-in" class="control-button" type="button" aria-label="Zoom in">
-            Zoom In
-          </button>
-          <button
-            id="fit-width"
-            class="control-button"
-            type="button"
-            aria-label="Fit PDF to screen width"
-          >
-            Fit Width
-          </button>
-          <output id="zoom-indicator" class="zoom-indicator" aria-live="polite">100%</output>
+        <div class="viewer-controls" role="toolbar" aria-label="PDF actions">
+          <a id="open-external" class="control-button" href="#" target="_blank" rel="noopener noreferrer">
+            Open in New Tab
+          </a>
+          <a id="download-pdf" class="control-button" href="#" download>
+            Download for Adobe Reader
+          </a>
         </div>
 
         <section id="main-content" class="viewer-main" tabindex="-1">
           <div id="loading-state" class="status status-loading">Loading document…</div>
           <div id="error-state" class="status status-error" hidden>
-            Unable to load this PDF. Please check the file path or network access.
+            Unable to load this PDF. Please try "Open in New Tab" or "Download for Adobe Reader".
           </div>
-          <div id="pdf-pages" class="pdf-pages" aria-label="PDF pages"></div>
+          <iframe
+            id="pdf-frame"
+            class="pdf-frame"
+            title="PDF document viewer"
+            loading="eager"
+          ></iframe>
         </section>
       </section>
     </main>

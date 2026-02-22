@@ -187,12 +187,9 @@ body {
   padding: 0 0.75rem;
   background: #fff;
   color: var(--accent);
-}
-
-.zoom-indicator {
-  margin-left: auto;
-  font-weight: 600;
-  color: var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
 .viewer-main {
@@ -216,24 +213,13 @@ body {
   border: 1px solid #e8b5b5;
 }
 
-.pdf-pages {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.pdf-page {
-  background: #fff;
-  border-radius: 0.65rem;
-  padding: 0.25rem;
-  box-shadow: 0 10px 22px rgba(22, 30, 27, 0.1);
-  overflow: hidden;
-}
-
-.pdf-page canvas {
-  display: block;
+.pdf-frame {
   width: 100%;
-  height: auto;
-  border-radius: 0.45rem;
+  min-height: calc(100dvh - 180px);
+  border: 0;
+  border-radius: 0.65rem;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(22, 30, 27, 0.1);
 }
 
 button,
@@ -243,7 +229,8 @@ select {
 
 button:focus-visible,
 select:focus-visible,
-.doc-card:focus-within {
+.doc-card:focus-within,
+.control-button:focus-visible {
   outline: 3px solid #3c8f7f;
   outline-offset: 2px;
 }
@@ -257,28 +244,4 @@ select:focus-visible,
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
-}
-
-@media (min-width: 768px) {
-  .home-header,
-  .cards,
-  .viewer-main {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-
-  .cards {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .viewer-controls {
-    top: 67px;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-
-  .viewer-logo {
-    width: 36px;
-    height: 36px;
-  }
 }
