@@ -1,5 +1,3 @@
-const ADOBE_EMBED_API_CLIENT_ID = "YOUR_ADOBE_EMBED_API_CLIENT_ID";
-
 const docs = {
   "first-floor": {
     title: "First Floor",
@@ -13,7 +11,6 @@ const docs = {
 
 const state = {
   activeDocId: null,
-  sdkReady: false,
 };
 
 const homeView = document.getElementById("home-view");
@@ -24,7 +21,7 @@ const titleEl = document.getElementById("viewer-title");
 const loadingState = document.getElementById("loading-state");
 const errorState = document.getElementById("error-state");
 const viewerMain = document.getElementById("main-content");
-const adobeViewerEl = document.getElementById("adobe-viewer");
+const pdfFrame = document.getElementById("pdf-frame");
 const openExternal = document.getElementById("open-external");
 const downloadPdf = document.getElementById("download-pdf");
 
@@ -53,71 +50,47 @@ function setViewerLinks(url, title) {
   downloadPdf.setAttribute("download", `${title}.pdf`);
 }
 
+function showLoading() {
+  if (loadingState) loadingState.hidden = false;
+  if (errorState) errorState.hidden = true;
+}
+
 function showError() {
   if (loadingState) loadingState.hidden = true;
   if (errorState) errorState.hidden = false;
 }
 
-function isAdobeConfigured() {
-  return (
-    ADOBE_EMBED_API_CLIENT_ID &&
-    ADOBE_EMBED_API_CLIENT_ID !== "YOUR_ADOBE_EMBED_API_CLIENT_ID"
-  );
-}
-
-async function renderWithAdobeEmbed(doc) {
-  if (!adobeViewerEl) {
-    console.error("Viewer container not found.");
-    showError();
-    return;
-  }
-
-  if (!window.AdobeDC || !state.sdkReady || !isAdobeConfigured()) {
-    showError();
-    return;
-  }
-
-  adobeViewerEl.innerHTML = "";
-
-  try {
-    const adobeDCView = new window.AdobeDC.View({
-      clientId: ADOBE_EMBED_API_CLIENT_ID,
-      divId: "adobe-viewer",
-    });
-
-    await adobeDCView.previewFile(
-      {
-        content: { location: { url: doc.url } },
-        metaData: { fileName: `${doc.title}.pdf` },
-      },
-      {
-        embedMode: "SIZED_CONTAINER",
-        showDownloadPDF: true,
-        showPrintPDF: true,
-        showLeftHandPanel: false,
-      }
-    );
-
-    if (loadingState) loadingState.hidden = true;
-    if (errorState) errorState.hidden = true;
-  } catch (error) {
-    console.error("Adobe PDF Embed API failed", error);
-    showError();
-  }
+function showViewerReady() {
+  if (loadingState) loadingState.hidden = true;
+  if (errorState) errorState.hidden = true;
 }
 
 function loadDocument(docId) {
   const doc = docs[docId];
-  if (!doc) return;
+  if (!doc || !pdfFrame) return;
 
   state.activeDocId = docId;
   if (titleEl) titleEl.textContent = doc.title;
   if (docSwitcher) docSwitcher.value = docId;
-  if (loadingState) loadingState.hidden = false;
-  if (errorState) errorState.hidden = true;
 
+  showLoading();
   setViewerLinks(doc.url, doc.title);
-  renderWithAdobeEmbed(doc);
+
+  const onLoad = () => {
+    showViewerReady();
+    pdfFrame.removeEventListener("load", onLoad);
+    pdfFrame.removeEventListener("error", onError);
+  };
+
+  const onError = () => {
+    showError();
+    pdfFrame.removeEventListener("load", onLoad);
+    pdfFrame.removeEventListener("error", onError);
+  };
+
+  pdfFrame.addEventListener("load", onLoad, { once: true });
+  pdfFrame.addEventListener("error", onError, { once: true });
+  pdfFrame.src = doc.url;
 }
 
 function switchToViewer(docId) {
@@ -138,13 +111,6 @@ bindEvent(backBtn, "click", () => {
 
 bindEvent(docSwitcher, "change", (event) => {
   loadDocument(event.target.value);
-});
-
-document.addEventListener("adobe_dc_view_sdk.ready", () => {
-  state.sdkReady = true;
-  if (state.activeDocId) {
-    loadDocument(state.activeDocId);
-  }
 });
 
 setView(false);
