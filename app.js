@@ -24,6 +24,9 @@ const state = {
   scrollByDoc: {},
   renderingToken: 0,
   lastKnownViewerWidth: 0,
+  lastKnownWindowWidth: window.innerWidth,
+  isUserScrolling: false,
+  pendingResizeRerender: false,
 };
 
 const homeView = document.getElementById("home-view");
@@ -39,6 +42,7 @@ const zoomInBtn = document.getElementById("zoom-in");
 const fitWidthBtn = document.getElementById("fit-width");
 const zoomIndicator = document.getElementById("zoom-indicator");
 const viewerMain = document.getElementById("main-content");
+let scrollIdleTimer;
 
 function debounce(fn, delay = 180) {
   let timer;
@@ -120,6 +124,19 @@ async function rerenderActivePdf(preserveScroll = true) {
   viewerMain.scrollTop = savedScroll;
 }
 
+function requestRerenderAfterScroll() {
+  if (!state.activePdf || !viewerView.classList.contains("is-active")) return;
+  if (state.zoomMode !== "fit-width") return;
+
+  if (state.isUserScrolling) {
+    state.pendingResizeRerender = true;
+    return;
+  }
+
+  state.pendingResizeRerender = false;
+  rerenderActivePdf(true);
+}
+
 async function loadDocument(docId, preserveScroll = false) {
   if (!docs[docId]) return;
 
@@ -179,13 +196,29 @@ const rerenderOnResize = debounce(() => {
   if (!state.activePdf || !viewerView.classList.contains("is-active")) return;
   if (state.zoomMode !== "fit-width") return;
 
+  const widthDeltaFromWindow = Math.abs(window.innerWidth - state.lastKnownWindowWidth);
+  if (widthDeltaFromWindow < 8) return;
+
+  state.lastKnownWindowWidth = window.innerWidth;
+
   const currentWidth = getAvailableWidth();
   const widthDelta = Math.abs(currentWidth - state.lastKnownViewerWidth);
 
   if (widthDelta < 4) return;
 
-  rerenderActivePdf(true);
+  requestRerenderAfterScroll();
 }, 220);
+
+const markScrolling = () => {
+  state.isUserScrolling = true;
+  clearTimeout(scrollIdleTimer);
+  scrollIdleTimer = setTimeout(() => {
+    state.isUserScrolling = false;
+    if (state.pendingResizeRerender) {
+      requestRerenderAfterScroll();
+    }
+  }, 140);
+};
 
 document.querySelectorAll(".open-doc").forEach((button) => {
   button.addEventListener("click", () => {
@@ -213,6 +246,7 @@ fitWidthBtn.addEventListener("click", () => {
 
 window.addEventListener("resize", rerenderOnResize);
 window.addEventListener("orientationchange", rerenderOnResize);
+window.addEventListener("scroll", markScrolling, { passive: true });
 
 setView(false);
 updateZoomLabel();
