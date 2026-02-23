@@ -16,6 +16,10 @@ const docs = {
   },
 };
 
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 3;
+const PINCH_RERENDER_THRESHOLD = 0.1;
+
 const state = {
   activeDocId: null,
   activePdf: null,
@@ -29,6 +33,8 @@ const state = {
   pendingResizeRerender: false,
   lastScrollAt: 0,
   rerenderInFlight: false,
+  activePointers: new Map(),
+  pinch: null,
 };
 
 const homeView = document.getElementById("home-view");
@@ -54,6 +60,23 @@ function debounce(fn, delay = 180) {
   };
 }
 
+function clampZoom(scale) {
+  return Math.min(Math.max(scale, MIN_ZOOM), MAX_ZOOM);
+}
+
+function saveCurrentScrollPosition() {
+  if (!state.activeDocId) return;
+  state.scrollByDoc[state.activeDocId] = {
+    top: viewerMain.scrollTop,
+    left: viewerMain.scrollLeft,
+  };
+}
+
+function restoreScrollPosition(scroll = { top: 0, left: 0 }) {
+  viewerMain.scrollTop = scroll.top || 0;
+  viewerMain.scrollLeft = scroll.left || 0;
+}
+
 function setView(showViewer) {
   homeView.classList.toggle("is-active", !showViewer);
   viewerView.classList.toggle("is-active", showViewer);
@@ -66,6 +89,13 @@ function getAvailableWidth() {
 
 function updateZoomLabel() {
   zoomIndicator.textContent = `${Math.round(state.zoomScale * 100)}%`;
+}
+
+function getPointerDistance() {
+  const points = [...state.activePointers.values()];
+  if (points.length < 2) return 0;
+  const [a, b] = points;
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 async function renderPdfPages(pdfDoc, token) {
@@ -117,7 +147,10 @@ async function rerenderActivePdf(preserveScroll = true) {
   if (!state.activePdf) return;
   if (state.rerenderInFlight) return;
 
-  const savedScroll = preserveScroll ? viewerMain.scrollTop : 0;
+  const savedScroll = preserveScroll
+    ? { top: viewerMain.scrollTop, left: viewerMain.scrollLeft }
+    : { top: 0, left: 0 };
+
   state.renderingToken += 1;
   const token = state.renderingToken;
   state.rerenderInFlight = true;
@@ -126,7 +159,7 @@ async function rerenderActivePdf(preserveScroll = true) {
     await renderPdfPages(state.activePdf, token);
 
     if (token !== state.renderingToken) return;
-    viewerMain.scrollTop = savedScroll;
+    restoreScrollPosition(savedScroll);
   } finally {
     state.rerenderInFlight = false;
   }
@@ -157,7 +190,7 @@ async function loadDocument(docId, preserveScroll = false) {
   if (!docs[docId]) return;
 
   if (state.activeDocId && viewerView.classList.contains("is-active")) {
-    state.scrollByDoc[state.activeDocId] = viewerMain.scrollTop;
+    saveCurrentScrollPosition();
   }
 
   state.activeDocId = docId;
@@ -180,9 +213,9 @@ async function loadDocument(docId, preserveScroll = false) {
     await renderPdfPages(pdfDoc, token);
 
     if (preserveScroll) {
-      viewerMain.scrollTop = state.scrollByDoc[docId] || 0;
+      restoreScrollPosition(state.scrollByDoc[docId] || { top: 0, left: 0 });
     } else {
-      viewerMain.scrollTop = 0;
+      restoreScrollPosition({ top: 0, left: 0 });
     }
 
     loadingState.hidden = true;
@@ -203,9 +236,67 @@ function switchToViewer(docId) {
 function setManualZoom(nextScale) {
   if (!state.activePdf) return;
   state.zoomMode = "manual";
-  state.zoomScale = Math.min(Math.max(nextScale, 0.5), 3);
+  state.zoomScale = clampZoom(nextScale);
   updateZoomLabel();
   rerenderActivePdf(true);
+}
+
+function applyPinchZoom(nextScale) {
+  if (!state.activePdf) return;
+  state.zoomMode = "manual";
+  state.zoomScale = clampZoom(nextScale);
+  updateZoomLabel();
+}
+
+function maybeRerenderForPinch(force = false) {
+  if (!state.pinch) return;
+  const delta = Math.abs(state.zoomScale - state.pinch.lastRenderedScale);
+  if (force || delta >= PINCH_RERENDER_THRESHOLD) {
+    state.pinch.lastRenderedScale = state.zoomScale;
+    rerenderActivePdf(true);
+  }
+}
+
+function onPointerDown(event) {
+  if (event.pointerType !== "touch") return;
+  state.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+  if (state.activePointers.size === 2 && state.activePdf) {
+    const startDistance = getPointerDistance();
+    if (startDistance > 0) {
+      state.pinch = {
+        startDistance,
+        startScale: state.zoomMode === "fit-width" ? state.zoomScale : state.zoomScale,
+        lastRenderedScale: state.zoomScale,
+      };
+    }
+  }
+}
+
+function onPointerMove(event) {
+  if (event.pointerType !== "touch") return;
+  if (!state.activePointers.has(event.pointerId)) return;
+
+  state.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+  if (state.activePointers.size >= 2 && state.pinch) {
+    event.preventDefault();
+    const currentDistance = getPointerDistance();
+    if (currentDistance <= 0) return;
+
+    const scaleFactor = currentDistance / state.pinch.startDistance;
+    applyPinchZoom(state.pinch.startScale * scaleFactor);
+    maybeRerenderForPinch(false);
+  }
+}
+
+function onPointerEnd(event) {
+  state.activePointers.delete(event.pointerId);
+
+  if (state.activePointers.size < 2 && state.pinch) {
+    maybeRerenderForPinch(true);
+    state.pinch = null;
+  }
 }
 
 const rerenderOnResize = debounce(() => {
@@ -245,7 +336,7 @@ document.querySelectorAll(".open-doc").forEach((button) => {
 
 backBtn.addEventListener("click", () => {
   if (state.activeDocId) {
-    state.scrollByDoc[state.activeDocId] = viewerMain.scrollTop;
+    saveCurrentScrollPosition();
   }
   setView(false);
 });
@@ -264,6 +355,22 @@ fitWidthBtn.addEventListener("click", () => {
 window.addEventListener("resize", rerenderOnResize);
 window.addEventListener("orientationchange", rerenderOnResize);
 viewerMain.addEventListener("scroll", markScrolling, { passive: true });
+viewerMain.addEventListener("pointerdown", onPointerDown, { passive: true });
+viewerMain.addEventListener("pointermove", onPointerMove, { passive: false });
+viewerMain.addEventListener("pointerup", onPointerEnd, { passive: true });
+viewerMain.addEventListener("pointercancel", onPointerEnd, { passive: true });
+
+// Prevent browser pull-to-refresh / viewport pinch behaviors while interacting
+// with the in-app PDF viewport. We handle two-finger zoom ourselves.
+viewerMain.addEventListener(
+  "touchmove",
+  (event) => {
+    if (event.touches.length > 1) {
+      event.preventDefault();
+    }
+  },
+  { passive: false }
+);
 
 setView(false);
 updateZoomLabel();
