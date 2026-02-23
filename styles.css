@@ -26,6 +26,7 @@ body {
 
 body {
   line-height: 1.5;
+  overscroll-behavior-y: none;
 }
 
 .skip-link {
@@ -55,6 +56,13 @@ body {
 
 .view.is-active {
   display: block;
+}
+
+#viewer-view.is-active {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 100dvh;
 }
 
 .home-header {
@@ -197,6 +205,11 @@ body {
 
 .viewer-main {
   padding: 0.75rem;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }
 
 .status {
@@ -219,6 +232,8 @@ body {
 .pdf-pages {
   display: grid;
   gap: 0.9rem;
+  width: max-content;
+  min-width: 100%;
 }
 
 .pdf-page {
@@ -231,7 +246,7 @@ body {
 
 .pdf-page canvas {
   display: block;
-  width: 100%;
+  max-width: none;
   height: auto;
   border-radius: 0.45rem;
 }
