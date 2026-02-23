@@ -27,6 +27,8 @@ const state = {
   lastKnownWindowWidth: window.innerWidth,
   isUserScrolling: false,
   pendingResizeRerender: false,
+  lastScrollAt: 0,
+  rerenderInFlight: false,
 };
 
 const homeView = document.getElementById("home-view");
@@ -113,22 +115,36 @@ async function renderPdfPages(pdfDoc, token) {
 
 async function rerenderActivePdf(preserveScroll = true) {
   if (!state.activePdf) return;
+  if (state.rerenderInFlight) return;
 
   const savedScroll = preserveScroll ? viewerMain.scrollTop : 0;
   state.renderingToken += 1;
   const token = state.renderingToken;
+  state.rerenderInFlight = true;
 
-  await renderPdfPages(state.activePdf, token);
+  try {
+    await renderPdfPages(state.activePdf, token);
 
-  if (token !== state.renderingToken) return;
-  viewerMain.scrollTop = savedScroll;
+    if (token !== state.renderingToken) return;
+    viewerMain.scrollTop = savedScroll;
+  } finally {
+    state.rerenderInFlight = false;
+  }
 }
 
 function requestRerenderAfterScroll() {
   if (!state.activePdf || !viewerView.classList.contains("is-active")) return;
   if (state.zoomMode !== "fit-width") return;
+  if (state.rerenderInFlight) return;
 
   if (state.isUserScrolling) {
+    state.pendingResizeRerender = true;
+    return;
+  }
+
+  // Mobile browsers can emit resize events while the URL bar collapses during
+  // scrolling. Delay rerender to avoid a visible full-page refresh effect.
+  if (Date.now() - state.lastScrollAt < 600) {
     state.pendingResizeRerender = true;
     return;
   }
@@ -197,7 +213,7 @@ const rerenderOnResize = debounce(() => {
   if (state.zoomMode !== "fit-width") return;
 
   const widthDeltaFromWindow = Math.abs(window.innerWidth - state.lastKnownWindowWidth);
-  if (widthDeltaFromWindow < 8) return;
+  if (widthDeltaFromWindow < 24) return;
 
   state.lastKnownWindowWidth = window.innerWidth;
 
@@ -211,6 +227,7 @@ const rerenderOnResize = debounce(() => {
 
 const markScrolling = () => {
   state.isUserScrolling = true;
+  state.lastScrollAt = Date.now();
   clearTimeout(scrollIdleTimer);
   scrollIdleTimer = setTimeout(() => {
     state.isUserScrolling = false;
@@ -246,7 +263,7 @@ fitWidthBtn.addEventListener("click", () => {
 
 window.addEventListener("resize", rerenderOnResize);
 window.addEventListener("orientationchange", rerenderOnResize);
-window.addEventListener("scroll", markScrolling, { passive: true });
+viewerMain.addEventListener("scroll", markScrolling, { passive: true });
 
 setView(false);
 updateZoomLabel();
